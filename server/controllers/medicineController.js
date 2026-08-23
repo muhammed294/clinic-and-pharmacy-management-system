@@ -12,7 +12,7 @@ exports.createMedicine = async (req, res) => {
         }
 
         const [result] = await db.query(
-            'INSERT INTO medicine (name, category, unit, unit_price, minimum_stock, is_active) VALUE (?,?,?,?,?,?)',
+            'INSERT INTO medicine (name, category, unit, unit_price, minimum_stock, is_active) VALUES (?,?,?,?,?,?)',
             [name, category || null, unit, unit_price, minimum_stock || 5, is_active !== undefined ? is_active : true]
         );
 
@@ -21,6 +21,7 @@ exports.createMedicine = async (req, res) => {
             message: 'Medicine created successfully'
         });
     } catch (error) {
+        console.error(error);
         res.status(500).json({
             message: 'Error creating medicine', 
             error: error.message
@@ -34,6 +35,7 @@ exports.getAllMedicines = async (req, res) => {
         const [medicines] = await db.query('SELECT * FROM medicine');
         res.json(medicines);
     } catch (error) {
+        console.error(error);
         res.status(500).json({
             message: 'Error fetching medicines', 
             error: error.message
@@ -65,30 +67,64 @@ exports.getMedicineByID = async (req, res) => {
 }
 
 //PUT Medicine by ID
-exports.getMedicineByID = async (req, res) => {
+exports.updateMedicineByID = async (req, res) => {
     try {
         const { name, category, unit, unit_price, minimum_stock, is_active } = req.body;
 
         const { id } = req.params;
 
-        const [medicine] = await db.query('SELECT * FROM medicine WHERE id = ?', [id]);
+        const [existing] = await db.query('SELECT * FROM medicine WHERE id = ?', [id]);
 
-        if (medicine.length === 0) {
+        if (existing.length === 0) {
             return res.status(404).json({
                 message: 'Medicine not found'
             });
         } 
 
-        if (medicine.length > 0) {
-            medicine = await db.query('UPDATE * FROM medicine WHERE id = ?', [id]);
-            return res.json({
-                message: 'updated successful'
-            })
-        }
+        await db.query(
+            'UPDATE medicine SET name = ?, category = ?, unit = ?, unit_price = ?, minimum_stock = ?, is_active = ?  WHERE id = ?',
+            [name, category, unit, unit_price, minimum_stock, is_active, id]
+        );
+
+        res.json({
+            message: 'updated successful'
+        })
+            
     } catch (error) {
         console.error(error);
         res.status(500).json({
             message: 'Error fetching medicine',
+            error: error.message
+        });
+    }
+}
+
+//DELETE Medicine by ID
+exports.deleteMedicineByID = async (req, res) => {
+    try {
+        const { id } = req.params;
+
+        const [checkExisting] = await db.query('SELECT * FROM medicine WHERE id = ?', [id]);
+
+        if (checkExisting.length === 0) {
+            return res.status(404).json({
+                message: 'Medicine not found'
+            });
+        } 
+
+        await db.query(
+            'UPDATE medicine SET is_active = false  WHERE id = ?',
+            [id]
+        );
+
+        res.json({
+            message: 'medicine deactivated successfully'
+        })
+            
+    } catch (error) {
+        console.error(error);
+        res.status(500).json({
+            message: 'Error deleting medicine',
             error: error.message
         });
     }
