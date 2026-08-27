@@ -1,11 +1,12 @@
 const express = require('express');
 const router = express.Router();
-const PharmacySaleController = require('../controllers/pharmacySaleController');
+const pharmacySaleController = require('../controllers/pharmacySaleController');
+const authorizeRoles = require('../middleware/authorizeRoles');
 
-router.post('/', PharmacySaleController.createPharmacySale);
-router.get('/', PharmacySaleController.getAllPharmacySale);
-router.get('/:id', PharmacySaleController.getPharmacySaleByID);
-router.put('/:id', PharmacySaleController.updatePharmacySaleByID);
-router.delete('/:id', PharmacySaleController.deletePharmacySaleByID);
+router.get('/', authorizeRoles('admin', 'pharmacist'), pharmacySaleController.getAllPharmacySale);
+router.get('/:id', authorizeRoles('admin', 'pharmacist'), pharmacySaleController.createPharmacySale);
+router.post('/', authorizeRoles('admin', 'pharmacist'), pharmacySaleController.createPharmacySale);
+router.put('/:id', authorizeRoles('admin', 'pharmacist'), pharmacySaleController.updatePharmacySaleByID);
+router.delete('/:id', authorizeRoles('admin', 'pharmacist'), pharmacySaleController.deletePharmacySaleByID);
 
 module.exports = router;
