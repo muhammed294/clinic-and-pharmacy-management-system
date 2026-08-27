@@ -1,11 +1,12 @@
 const express = require('express');
 const router = express.Router();
 const prescriptionController = require('../controllers/prescriptionController');
+const authorizeRoles = require('../middleware/authorizeRoles');
 
-router.get('/', prescriptionController.getAllPrescription);
-router.post('/', prescriptionController.createPrescription);
-router.get('/:id', prescriptionController.getPrescriptionByID);
-router.put('/:id', prescriptionController.updatePrescriptionByID);
-router.delete('/:id', prescriptionController.deletePrescriptionByID);
+router.get('/', authorizeRoles('admin', 'doctor'), prescriptionController.getAllPrescription);
+router.get('/:id', authorizeRoles('admin', 'doctor'), prescriptionController.getPrescriptionByID);
+router.post('/', authorizeRoles('admin', 'doctor'), prescriptionController.createPrescription);
+router.put('/:id', authorizeRoles('admin', 'doctor'), prescriptionController.updatePrescriptionByID);
+router.delete('/:id', authorizeRoles('admin', 'doctor'), prescriptionController.deletePrescriptionByID);
 
 module.exports = router;
