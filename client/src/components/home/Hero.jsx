@@ -16,6 +16,7 @@ export default function Hero() {
                         whole family — from routine checkups and lab testing to
                         emergency treatment, all in one place.
                     </p>
+                    <p className='fw-bold fs-5 text-primary ms-2'>24 hours per 7 days</p>
                     <Button variant='outline-primary'>Learn more</Button>
                 </div>
                 <div className="col-lg-6 d-none d-lg-block" style={{textAlign: 'center'}}>
