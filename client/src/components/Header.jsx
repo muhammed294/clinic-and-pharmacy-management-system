@@ -6,10 +6,17 @@ import Navbar from 'react-bootstrap/Navbar';
 import { HeartPulse } from 'react-bootstrap-icons';
 import {Link} from 'react-router-dom';
 import { useAuth } from '../context/AuthContext';
+import { useNavigate } from 'react-router-dom';
 
 export default function Header() {
     const { user } = useAuth();
-    console.log('current user:', user);
+    const navigate = useNavigate();
+
+    const { logout } = useAuth();
+    const handleLogout = () => {
+        logout();
+        navigate('/login/');
+    }
   return (
     <Navbar expand="lg" className="bg-body-tertiary" bg="light" data-bs-theme="light">
       <Container>
@@ -27,7 +34,11 @@ export default function Header() {
             <Nav.Link as={Link} to="/" className='text-primary  fs-5'>Home</Nav.Link>
             <Nav.Link as={Link} to="/about" className='text-primary  fs-5'>About</Nav.Link>
             <Nav.Link as={Link} to="/contact" className='text-primary  fs-5'>Contact</Nav.Link>
-            <Button as={Link} to="/login" variant='outline-primary' className='fw-bold fs-5 ms-4'>login</Button>
+            {user ? (
+               <Button onClick={handleLogout} variant='outline-primary' className='fw-bold fs-5 ms-4'>logout</Button>
+            ) : (
+              <Button as={Link} to="/login" variant='outline-primary' className='fw-bold fs-5 ms-4'>login</Button>
+            )}
           </Nav>
         </Navbar.Collapse>
       </Container>
