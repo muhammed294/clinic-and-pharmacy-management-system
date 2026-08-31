@@ -23,7 +23,6 @@ export default function Login() {
 
             login(response.data);
 
-            // Redirect based on role
             navigate(`/dashboard/${response.data.role}`);
 
         } catch (err) {
