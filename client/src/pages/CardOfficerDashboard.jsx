@@ -51,6 +51,23 @@ export default function CardOfficerDashboard() {
     const [vitalsError, setVitalsError] = useState('');
     const [vitalsSuccess, setVitalsSuccess] = useState('');
 
+    //PAYMENT STATE
+    const [unpaidLabRequests, setUnpaidLabRequests] = useState([]);
+    const [payingLabRequest, setPayingLabRequest] = useState(null);
+    const [payment_amount, setPaymentAmount] = useState('');
+    const [payment_method, setPaymentMethod] = useState('');
+    const [transaction_reference, setTransactionReference] = useState('');
+    const [paymentError, setPaymentError] = useState('');
+    const [paymentSuccess, setPaymentSuccess] = useState('');
+
+    //REGISTRATION PAYMENT STATE
+    const [regPaymentVisitId, setRegPaymentVisitId] = useState('');
+    const [regPaymentAmount, setRegPaymentAmount] = useState('');
+    const [regPaymentMethod, setRegPaymentMethod] = useState('');
+    const [regTransactionReference, setRegTransactionReference] = useState('');
+    const [regPaymentError, setRegPaymentError] = useState('');
+    const [regPaymentSuccess, setRegPaymentSuccess] = useState('');
+
     //CREATE PATIENT
     const handleSubmit = async (e) => {
         e.preventDefault();
@@ -107,6 +124,99 @@ export default function CardOfficerDashboard() {
             setCardNo(String(maxCardNo + 1));
         }
     }, [patients]);
+
+    //FETCH lab requests still needing payment
+    const fetchUnpaidLabRequests = async () => {
+        try {
+            const token = localStorage.getItem('token');
+            const response = await axios.get('http://localhost:5000/labrequest', {
+                headers: { Authorization: `Bearer ${token}` }
+            });
+            const unpaid = response.data.filter((lr) => lr.status === 'requested');
+            setUnpaidLabRequests(unpaid);
+        } catch (err) {
+            console.error(err);
+        }
+    };
+
+    useEffect(() => {
+        fetchUnpaidLabRequests();
+    }, []);
+
+    //OPEN lab payment form
+    const handleOpenLabPayment = (labRequest) => {
+        setPayingLabRequest(labRequest);
+        setPaymentAmount('');
+        setPaymentMethod('');
+        setTransactionReference('');
+        setPaymentError('');
+        setPaymentSuccess('');
+    };
+
+    //SUBMIT lab payment
+    const handleLabPaymentSubmit = async (e) => {
+        e.preventDefault();
+        setPaymentError('');
+
+        try {
+            const token = localStorage.getItem('token');
+            await axios.post('http://localhost:5000/payment',
+                {
+                    visit_id: payingLabRequest.visit_id,
+                    lab_request_id: payingLabRequest.id,
+                    payment_type: 'lab',
+                    amount: payment_amount,
+                    payment_method,
+                    transaction_reference,
+                    collected_by: user.id
+                },
+                { headers: { Authorization: `Bearer ${token}` } }
+            );
+            setPaymentSuccess('Lab payment recorded and approved!');
+            setPayingLabRequest(null);
+            fetchUnpaidLabRequests();
+        } catch (err) {
+            if (err.response) {
+                setPaymentError(err.response.data.message);
+            } else {
+                setPaymentError('Unable to reach the server.');
+            }
+        }
+    };
+
+    //SUBMIT registration payment (standalone, by visit id)
+    const handleRegPaymentSubmit = async (e) => {
+        e.preventDefault();
+        setRegPaymentError('');
+        setRegPaymentSuccess('');
+
+        try {
+            const token = localStorage.getItem('token');
+            await axios.post('http://localhost:5000/payment',
+                {
+                    visit_id: regPaymentVisitId,
+                    payment_type: 'registration',
+                    amount: regPaymentAmount,
+                    payment_method: regPaymentMethod,
+                    transaction_reference: regTransactionReference,
+                    collected_by: user.id
+                },
+                { headers: { Authorization: `Bearer ${token}` } }
+            );
+            setRegPaymentSuccess('Registration payment recorded successfully!');
+            setRegPaymentVisitId('');
+            setRegPaymentAmount('');
+            setRegPaymentMethod('');
+            setRegTransactionReference('');
+        } catch (err) {
+            if (err.response) {
+                setRegPaymentError(err.response.data.message);
+            } else {
+                setRegPaymentError('Unable to reach the server.');
+            }
+        }
+    };
+
     //EDIT fetch single patient by id
     const handleEditClick = async (patientId) => {
         setEditError('');
@@ -430,6 +540,99 @@ export default function CardOfficerDashboard() {
                     <Button variant='danger' onClick={handleDeleteConfirm}>Delete</Button>
                 </Modal.Footer>
             </Modal>
+
+            {/*PAYMENT SECTION*/}
+            <Container className='py-4'>
+                <h4 className='fw-bold text-primary'>Lab Payments Pending</h4>
+                {paymentSuccess && <Alert variant='success'>{paymentSuccess}</Alert>}
+                <Table striped bordered hover>
+                    <thead>
+                        <tr>
+                            <th>Lab Request ID</th>
+                            <th>Visit ID</th>
+                            <th>Test Name</th>
+                            <th>Action</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        {unpaidLabRequests.map((lr) => (
+                            <tr key={lr.id}>
+                                <td>{lr.id}</td>
+                                <td>{lr.visit_id}</td>
+                                <td>{lr.test_name}</td>
+                                <td>
+                                    <Button size='sm' variant='success' onClick={() => handleOpenLabPayment(lr)}>Process Payment</Button>
+                                </td>
+                            </tr>
+                        ))}
+                    </tbody>
+                </Table>
+                {unpaidLabRequests.length === 0 && <p className='text-muted'>No pending lab payments.</p>}
+
+                {payingLabRequest && (
+                    <div className='mt-3 p-3 border rounded bg-light'>
+                        <h5>Pay for: {payingLabRequest.test_name} (Visit #{payingLabRequest.visit_id})</h5>
+                        {paymentError && <Alert variant='danger'>{paymentError}</Alert>}
+                        <Form onSubmit={handleLabPaymentSubmit}>
+                            <Form.Group className='mb-3'>
+                                <Form.Label>Amount</Form.Label>
+                                <Form.Control type='number' value={payment_amount} onChange={(e) => setPaymentAmount(e.target.value)} required />
+                            </Form.Group>
+                            <Form.Group className='mb-3'>
+                                <Form.Label>Payment Method</Form.Label>
+                                <Form.Select value={payment_method} onChange={(e) => setPaymentMethod(e.target.value)} required>
+                                    <option value=''>Select method</option>
+                                    <option value='cash'>Cash</option>
+                                    <option value='telebirr'>Telebirr</option>
+                                    <option value='cbe_birr'>CBE Birr</option>
+                                    <option value='boa'>BOA</option>
+                                </Form.Select>
+                            </Form.Group>
+                            {payment_method && payment_method !== 'cash' && (
+                                <Form.Group className='mb-3'>
+                                    <Form.Label>Transaction Reference</Form.Label>
+                                    <Form.Control type='text' value={transaction_reference} onChange={(e) => setTransactionReference(e.target.value)} required />
+                                </Form.Group>
+                            )}
+                            <Button variant='primary' type='submit' className='me-2'>Confirm Payment</Button>
+                            <Button variant='secondary' onClick={() => setPayingLabRequest(null)}>Cancel</Button>
+                        </Form>
+                    </div>
+                )}
+
+                <hr className='my-4' />
+
+                <h4 className='fw-bold text-primary'>Registration Payment</h4>
+                {regPaymentSuccess && <Alert variant='success'>{regPaymentSuccess}</Alert>}
+                {regPaymentError && <Alert variant='danger'>{regPaymentError}</Alert>}
+                <Form onSubmit={handleRegPaymentSubmit} style={{ maxWidth: '450px' }}>
+                    <Form.Group className='mb-3'>
+                        <Form.Label>Visit ID</Form.Label>
+                        <Form.Control type='number' value={regPaymentVisitId} onChange={(e) => setRegPaymentVisitId(e.target.value)} required />
+                    </Form.Group>
+                    <Form.Group className='mb-3'>
+                        <Form.Label>Amount</Form.Label>
+                        <Form.Control type='number' value={regPaymentAmount} onChange={(e) => setRegPaymentAmount(e.target.value)} required />
+                    </Form.Group>
+                    <Form.Group className='mb-3'>
+                        <Form.Label>Payment Method</Form.Label>
+                        <Form.Select value={regPaymentMethod} onChange={(e) => setRegPaymentMethod(e.target.value)} required>
+                        <option value=''>Select method</option>
+                            <option value='cash'>Cash</option>
+                            <option value='telebirr'>Telebirr</option>
+                            <option value='cbe_birr'>CBE Birr</option>
+                            <option value='boa'>BOA</option>
+                        </Form.Select>
+                    </Form.Group>
+                    {regPaymentMethod && regPaymentMethod !== 'cash' && (
+                        <Form.Group className='mb-3'>
+                            <Form.Label>Transaction Reference</Form.Label>
+                            <Form.Control type='text' value={regTransactionReference} onChange={(e) => setRegTransactionReference(e.target.value)} required />
+                        </Form.Group>
+                    )}
+                    <Button variant='primary' type='submit' className='w-100'>Confirm Payment</Button>
+                </Form>
+            </Container>
 
             {/* Start visit */}
             {startingVisitPatient && (
