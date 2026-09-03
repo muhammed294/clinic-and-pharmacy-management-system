@@ -22,15 +22,11 @@ export default function LabTechnicianDashboard() {
         setLoadError('');
         try {
             const response = await axios.get(`${API}/labrequest`, authHeader);
-            console.log(token)
-            console.log('All lab', response.data)
             const pending = response.data.filter(
                 (lr) => lr.status === 'payment_approved' || lr.status === 'in_progress'
             );
-            console.log('Filtered pending', pending)
             setLabRequests(pending);
         } catch (err) {
-            console.log(err)
             setLoadError('Unable to load lab requests.');
         }
     };
